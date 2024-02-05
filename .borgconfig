@@ -7,3 +7,10 @@
 	no-byte-compile = lisp/magit-libgit.el
 [submodule "sqlite3"]
 	build-step = make
+[submodule "doom-themes"]
+	load-path = .
+	load-path = extensions
+	load-path = themes
+[submodule "vertico"]
+	load-path = .
+	load-path = extensions
