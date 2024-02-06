@@ -1,4 +1,7 @@
 ;;;  -*- lexical-binding: t -*-
+(require 'dired)
+(require 'image-utility)
+
 (defvar dired-externally-file-ext-regex
   (rx bos
       (or (and "do" (or ?c ?t) (? ?x))
@@ -15,7 +18,6 @@
   "p" #'dired-convert-image-to-pdf
   "i" #'dired-convert-pdf-to-image
   "m" #'dired-merge-pdf-files)
-(fset 'dired-space-map dired-space-map)
 
 (define-keymap
   :keymap dired-mode-map
@@ -41,7 +43,7 @@
   "/ S" #'dired-do-symlink-regexp
   "/ Y" #'dired-do-relsymlink-regexp
   "/ &" #'dired-flag-garbage-files
-  "SPC" #'dired-space-map)
+  "SPC" dired-space-map)
 
 (defun dired-find-file-externally (&optional arg)
   "Open marked or current file in operating system's default application."
