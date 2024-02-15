@@ -467,12 +467,11 @@ if that doesn't produce a completion match."
 ;;;; Program
 ;;;;; `treesit'
 (use-package treesit-auto
-  :if (treesit-available-p)
   :init
   (defvar treesit:load-path (no-littering-expand-var-file-name "tree-sitter")
     "The directory where install compile and load a tree-sitter language grammar library.")
   :hook
-  (after-init-hook . global-treesit-auto-mode)
+  (after-init . global-treesit-auto-mode)
   :custom
   (treesit-font-lock-level 4)
   (treesit-auto-install t)
@@ -513,11 +512,12 @@ if that doesn't produce a completion match."
   (define-key cargo-mode-map (kbd "C-c") 'cargo-minor-mode-command-map))
 
 ;;;;; `julia-mode'
-(use-package julia-mode
-  :defer)
+(use-package julia-ts-mode :defer)
 
 (use-package julia-snail
-  :hook julia-mode)
+  :hook (julia-mode . julia-snail-mode)
+  :custom
+  (julia-snail-repl-display-eval-results t))
 
 ;;;;; `typescript-ts-mode'
 (use-package typescript-ts-mode
@@ -532,7 +532,7 @@ if that doesn't produce a completion match."
 
 ;;;;; `shell'
 (use-package ebuild-mode ;; Gentoo build script
-  :defer t)
+  :defer)
 
 ;;;;; `yaml-ts-mode'
 (use-package yaml-ts-mode
@@ -625,7 +625,18 @@ if that doesn't produce a completion match."
   :bind (:map vterm-mode-map
               ("C-q" . vterm-send-next-key)
               ("<C-backspace>" . (lambda () (interactive) (vterm-send-key (kbd "C-w")))))
-  )
+  :config
+  (add-to-list 'display-buffer-alist
+             '((lambda (buffer-or-name _)
+                   (let ((buffer (get-buffer buffer-or-name)))
+                     (with-current-buffer buffer
+                       (or (equal major-mode 'vterm-mode)
+                           (string-prefix-p vterm-buffer-name (buffer-name buffer))))))
+               (display-buffer-reuse-window display-buffer-in-side-window)
+               (side . bottom)
+               ;;(dedicated . t) ;dedicated is supported in emacs27
+               (reusable-frames . visible)
+               (window-height . 0.3))))
 
 (use-package magit
   :defer t
