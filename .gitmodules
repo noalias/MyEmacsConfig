@@ -73,6 +73,9 @@
 [submodule "julia-snail"]
 	path = lib/julia-snail
 	url = https://github.com/gcv/julia-snail
+[submodule "julia-ts-mode"]
+	path = lib/julia-ts-mode
+	url = https://github.com/ronisbr/julia-ts-mode
 [submodule "llama"]
 	path = lib/llama
 	url = https://git.sr.ht/~tarsius/llama
