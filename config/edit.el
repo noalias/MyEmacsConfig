@@ -40,15 +40,13 @@
 ;;;; View mode
 (setq view-read-only t)
 (global-set-key (kbd "C-;") #'view-mode)
-(add-hook 'view-mode-hook #'outline-minor-mode)
 (with-eval-after-load 'view
     (define-keymap
       :keymap view-mode-map
       "j" #'next-line
       "k" #'previous-line
       "m" edit-mark-map
-      "," #'View-back-to-mark
-      "o" outline-mode-prefix-map))
+      "," #'View-back-to-mark))
 
 ;;;; Mark
 (defvar-keymap edit-mark-map

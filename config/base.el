@@ -3,6 +3,7 @@
 (add-hook 'after-init-hook #'save-place-mode)
 (add-hook 'text-mode-hook #'indicate-buffer-boundaries-left)
 (add-hook 'after-init-hook #'column-number-mode)
+(add-hook 'after-init-hook #'windmove-default-keybindings)
 
 (setq auto-save-silent t   ; quietly save
       make-backup-files nil
