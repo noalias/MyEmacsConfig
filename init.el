@@ -514,10 +514,17 @@ if that doesn't produce a completion match."
 ;;;;; `julia-mode'
 (use-package julia-ts-mode :defer)
 
-(use-package julia-snail
-  :hook (julia-mode . julia-snail-mode)
-  :custom
-  (julia-snail-repl-display-eval-results t))
+(use-package eglot-jl
+  :hook (julia-ts-mode . eglot-jl-init))
+
+(use-package julia-repl
+  :hook (julia-ts-mode . julia-repl-mode)
+  :config
+  (when linux-p
+    (julia-repl-set-terminal-backend 'vterm)))
+
+(use-package julia-formatter
+  :hook (julia-ts-mode . julia-formatter-mode))
 
 ;;;;; `typescript-ts-mode'
 (use-package typescript-ts-mode
