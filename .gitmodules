@@ -136,12 +136,12 @@
 [submodule "shrink-path"]
 	path = lib/shrink-path
 	url = https://gitlab.com/bennya/shrink-path.el
-[submodule "spinner"]
-	path = lib/spinner
-	url = https://github.com/Malabarba/spinner.el
 [submodule "sqlite3"]
 	path = lib/sqlite3
 	url = https://github.com/pekingduck/emacs-sqlite3-api.git
+[submodule "toml"]
+	path = lib/toml
+	url = https://github.com/gongo/emacs-toml
 [submodule "transient"]
 	path = lib/transient
 	url = https://github.com/magit/transient.git
