@@ -25,21 +25,28 @@
 ;;; Code:
 ;;; VARS
 (defconst win-p (eq system-type 'windows-nt))
-(defconst linux-p (eq system-type 'gnu/linux))
+(defconst win-wsl-p (and (eq system-type 'gnu/linux)
+                         (string-match
+                          "Linux.*Microsoft.*Linux"
+                          (shell-command-to-string "uname -a"))))
+(defconst linux-p (and (eq system-type 'gnu/linux)
+                       (not (string-match
+                             "Linux.*Microsoft.*Linux"
+                             (shell-command-to-string "uname -a")))))
 
 ;;; FUNCTIONS
 (defun find-file-externally (file)
   "Open files."
-  (if (and (eq system-type 'windows-nt)
-           (fboundp 'w32-shell-execute))
-      (w32-shell-execute "cmd /c start" file)
-    (call-process (pcase system-type
-                    ('darwin "open")
-                    ('cygwin "cygstart")
-                    (_ "xdg-open"))
-                  nil 0 nil
-                  (expand-file-name file)))
-  (message "Opened \"%s\" successfully." file))
+  (let ((file (expand-file-name file)))
+    (cond
+     ((and win-p (fboundp 'w32-shell-execute))
+      (w32-shell-execute "cmd /c start" file))
+     (win-wsl-p (call-process "wslview"
+                              nil 0 nil
+                              file))
+     (linux-p (call-process "xdg-open"
+                            nil 0 nil
+                            file)))))
 
 (provide 'defs)
 ;;; init-def.el ends here

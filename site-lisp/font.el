@@ -13,6 +13,8 @@
 
 (defvar cjk-font "霞鹜文楷等宽")
 
+(defvar symbol-font "Symbols Nerd Font Mono")
+
 (defvar emoji-font
   (cond (win-p "Segoe UI Emoji")
         (linux-p "Noto Color Emoji")))
@@ -26,12 +28,18 @@
 ;; 设置`cjk-font'
 (if (not (string= default-font
 		  cjk-font))
-    (dolist (charset '(kana han symbol cjk-misc bopomofo))
+    (dolist (charset '(kana han cjk-misc bopomofo))
       (set-fontset-font
        (frame-parameter nil 'font)
        charset
        (font-spec :family cjk-font
                   :size font-size))))
+
+;; 设置`symbol'
+(set-fontset-font t
+		  'symbol
+		  (font-spec :family symbol-font
+			         :size font-size))
 
 ;; 设置`emoji-font'
 (set-fontset-font t

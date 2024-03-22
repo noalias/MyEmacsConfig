@@ -4,6 +4,9 @@
 [submodule "aggressive-indent"]
 	path = lib/aggressive-indent
 	url = https://github.com/Malabarba/aggressive-indent-mode
+[submodule "auctex"]
+	path = lib/auctex
+	url = https://git.savannah.gnu.org/git/auctex.git
 [submodule "auto-compile"]
 	path = lib/auto-compile
 	url = https://github.com/emacscollective/auto-compile.git
@@ -16,6 +19,9 @@
 [submodule "cargo"]
 	path = lib/cargo
 	url = https://github.com/kwrooijen/cargo.el
+[submodule "cdlatex"]
+	path = lib/cdlatex
+	url = https://github.com/cdominik/cdlatex
 [submodule "closql"]
 	path = lib/closql
 	url = https://github.com/magit/closql.git
@@ -25,12 +31,6 @@
 [submodule "compat"]
 	path = lib/compat
 	url = https://github.com/emacs-compat/compat.git
-[submodule "consult"]
-	path = lib/consult
-	url = https://github.com/minad/consult
-[submodule "consult-company"]
-	path = lib/consult-company
-	url = https://github.com/mohkale/consult-company
 [submodule "dash"]
 	path = lib/dash
 	url = https://github.com/magnars/dash.el.git
@@ -70,6 +70,9 @@
 [submodule "hl-todo"]
 	path = lib/hl-todo
 	url = https://github.com/tarsius/hl-todo
+[submodule "isearch-mb"]
+	path = lib/isearch-mb
+	url = https://github.com/astoff/isearch-mb
 [submodule "julia-formatter"]
 	path = lib/julia-formatter
 	url = https://codeberg.org/FelipeLema/julia-formatter.el
@@ -88,9 +91,6 @@
 [submodule "magit"]
 	path = lib/magit
 	url = https://github.com/magit/magit.git
-[submodule "marginalia"]
-	path = lib/marginalia
-	url = https://github.com/minad/marginalia
 [submodule "markdown-mode"]
 	path = lib/markdown-mode
 	url = https://github.com/jrblevin/markdown-mode
@@ -109,6 +109,9 @@
 [submodule "orderless"]
 	path = lib/orderless
 	url = https://github.com/oantolin/orderless
+[submodule "org-modern"]
+	path = lib/org-modern
+	url = https://github.com/minad/org-modern
 [submodule "popup"]
 	path = lib/popup
 	url = https://github.com/auto-complete/popup-el
@@ -139,6 +142,9 @@
 [submodule "sqlite3"]
 	path = lib/sqlite3
 	url = https://github.com/pekingduck/emacs-sqlite3-api.git
+[submodule "tabspaces"]
+	path = lib/tabspaces
+	url = https://github.com/mclear-tools/tabspaces
 [submodule "toml"]
 	path = lib/toml
 	url = https://github.com/gongo/emacs-toml
@@ -157,6 +163,9 @@
 [submodule "vertico"]
 	path = lib/vertico
 	url = https://github.com/minad/vertico
+[submodule "vertico-posframe"]
+	path = lib/vertico-posframe
+	url = https://github.com/tumashu/vertico-posframe
 [submodule "vterm"]
 	path = lib/vterm
 	url = https://github.com/akermu/emacs-libvterm

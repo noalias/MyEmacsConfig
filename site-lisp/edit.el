@@ -25,6 +25,7 @@
 ;;; Code:
 (add-hook 'after-init-hook #'global-hl-line-mode)
 (add-hook 'after-init-hook #'electric-pair-mode)
+(setq electric-pair-inhibit-predicate 'electric-pair-conservative-inhibit)
 
 (add-hook 'after-init-hook #'show-paren-mode)
 (setq show-paren-context-when-offscreen 'overlay

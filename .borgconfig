@@ -14,3 +14,12 @@
 [submodule "vertico"]
 	load-path = .
 	load-path = extensions
+[submodule "auctex"]
+	load-path = .
+	build-step = ./autogen.sh
+	build-step = ./configure --with-lispdir=$XDG_CONFIG_HOME/emacs/lib/auctex
+	build-step = make
+	build-step = make doc
+	build-step = borg-maketexi
+	build-step = borg-makeinfo
+	build-step = borg-update-autoloads		

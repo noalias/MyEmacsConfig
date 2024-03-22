@@ -2,18 +2,13 @@
 (setq load-prefer-newer t)
 (setq byte-compile-warnings nil)
 
-(when (fboundp 'startup-redirect-eln-cache)
-  (startup-redirect-eln-cache
-   (convert-standard-filename
-    (expand-file-name  "var/eln-cache/" user-emacs-directory))))
-
 (let ((dir (file-name-directory (or load-file-name buffer-file-name))))
   (add-to-list 'load-path (expand-file-name "lib/compat" dir))
   (add-to-list 'load-path (expand-file-name "lib/packed" dir))
-  (add-to-list 'load-path (expand-file-name "lib/auto-compile" dir)))
-(require 'auto-compile)
-(auto-compile-on-load-mode)
-(auto-compile-on-save-mode)
+  (add-to-list 'load-path (expand-file-name "lib/auto-compile" dir))
+  (require 'auto-compile)
+  (auto-compile-on-load-mode)
+  (auto-compile-on-save-mode))
 
 ;; packages config
 (progn ;;`Packages'

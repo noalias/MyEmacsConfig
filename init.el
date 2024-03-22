@@ -9,32 +9,20 @@
   (setq user-init-file (or load-file-name buffer-file-name))
   (setq user-emacs-directory (file-name-directory user-init-file))
   (message "Loading %s..." user-init-file)
-  (when (< emacs-major-version 27)
-    (setq package-enable-at-startup nil)
-    ;; (package-initialize)
-    (load-file (expand-file-name "early-init.el" user-emacs-directory)))
   (setq inhibit-startup-buffer-menu t)
   (setq inhibit-startup-screen t)
   (setq inhibit-startup-echo-area-message "locutus")
   (setq initial-buffer-choice t)
-  (setq initial-scratch-message "")
-  (when (fboundp 'scroll-bar-mode)
-    (scroll-bar-mode 0))
-  (when (fboundp 'tool-bar-mode)
-    (tool-bar-mode 0))
-  (menu-bar-mode 0))
-
-(eval-and-compile ; `borg'
-  (add-to-list 'load-path (expand-file-name "lib/borg" user-emacs-directory))
-  (require 'borg)
-  (borg-initialize))
+  (setq initial-scratch-message ""))
 
 (eval-and-compile ; `use-package'
   (require  'use-package)
   (setq use-package-verbose t))
 
-(use-package dash
-  :config (global-dash-fontify-mode))
+(use-package borg
+  :load-path "lib/borg"
+  :config
+  (borg-initialize))
 
 (use-package auto-compile
   :config
@@ -53,6 +41,7 @@
         (if (>= emacs-major-version 29) 'sqlite-builtin 'sqlite-module)))
 
 (use-package server
+  :if nil
   :commands (server-running-p)
   :config (or (server-running-p) (server-mode)))
 
@@ -65,7 +54,7 @@
 ;;;; Pre
 (use-package no-littering)
 
-(add-to-list 'load-path (expand-file-name "config" user-emacs-directory))
+(add-to-list 'load-path (expand-file-name "site-lisp" user-emacs-directory))
 (use-package defs)
 (use-package base)
 (use-package custom
@@ -75,14 +64,12 @@
   (when (file-exists-p custom-file)
     (load custom-file)))
 
-
-
 ;;;; Face
 (use-package font)
 
 (use-package doom-themes
   :config
-  (load-theme 'doom-one :no-confirm)
+  (load-theme 'doom-dracula :no-confirm)
   (setq doom-themes-enable-bold t
 	    doom-themes-enable-italic t))
 
@@ -92,9 +79,9 @@
   (setq doom-modeline-major-mode-icon t))
 
 (use-package diff-hl
+  :hook (after-init . global-diff-hl-mode)
   :config
   (setq diff-hl-draw-borders nil)
-  (global-diff-hl-mode)
   (add-hook 'magit-post-refresh-hook 'diff-hl-magit-post-refresh t))
 
 (use-package diff-mode
@@ -111,12 +98,30 @@
   :custom
   (dired-hide-details-hide-symlink-targets nil)
   :config
+  (require 'dired+)
   (setq ls-lisp-dirs-first t)
   (setq dired-listing-switches "-lAhG --group-directories-first"
         dired-recursive-deletes 'always
         dired-recursive-copies 'always)
-  (require 'dired+)
   (add-hook 'dired-mode-hook #'dired-hide-details-mode))
+
+(use-package dired-x
+  :hook (dired-mode . dired-omit-mode)
+  :config
+  (setq dired-omit-files
+        (rx bos (or (seq "desktop.ini")
+                    (seq ?~ (? ?$) (* (or alnum (category chinese-two-byte))) (? ".tmp"))
+                    eos))))
+
+(use-package dired-aux
+  :defer
+  :custom
+  (dired-compress-directory-default-suffix ".7z")
+  :config
+  (add-to-list 'dired-compress-files-alist '("\\.7z\\'" . "7z a %o -r %i"))
+  (add-to-list 'dired-compress-file-suffixes `(,(rx ?. (or "7z" "zip" "rar" "gz") eos)
+                                               ""
+                                               "7z x -aoa -o%o %i")))
 
 (use-package fd-dired
   :bind ("M-s D" . fd-dired)
@@ -180,7 +185,7 @@
   (setq enable-recursive-minibuffers t)
   ;; Do not allow the cursor in the minibuffer prompt
   (add-hook 'minibuffer-setup-hook #'cursor-intangible-mode)
-  
+
   (defun completion:list-sort (all)
     "对 `Completions-buffer' 中的补全项进行排序"
     (let ((hist (minibuffer-history-value)))
@@ -199,7 +204,7 @@ if that doesn't produce a completion match."
     (if (and (not force) minibuffer--require-match)
         (minibuffer-complete-and-exit)
       (exit-minibuffer)))
-  
+
   (defun crm-indicator (args)
     (cons (format "[CRM%s] %s"
                   (replace-regexp-in-string
@@ -222,6 +227,13 @@ if that doesn't produce a completion match."
               ("DEL" . vertico-directory-delete-char)
               ("M-DEL" . vertico-directory-delete-word))
   :hook (rfn-eshadow-update-overlay . vertico-directory-tidy))
+
+(use-package vertico-posframe
+  :hook (vertico-mode . vertico-posframe-mode)
+  :init
+  (setq vertico-posframe-parameters
+        '((left-fringe  . 12)
+          (right-fringe . 12))))
 
 (use-package company
   :hook
@@ -252,172 +264,50 @@ if that doesn't produce a completion match."
 
   (advice-add 'company-capf :around #'company:completion-styles))
 
-;; (use-package consult-company
-;;   :bind (:map company-active-map
-;;               ("C-s" . consult-comapny)))
-
 (use-package nerd-icons-completion
   :hook (after-init . nerd-icons-completion-mode))
 
-(use-package marginalia
-  :hook (after-init . marginalia-mode)
-  :config
-  (setq marginalia-annotator-registry
-        (assq-delete-all 'file marginalia-annotator-registry)))
-
 ;;;; Navigation
-(use-package consult
-  ;; Replace bindings. Lazily loaded due by `use-package'.
-  :bind (;; C-c bindings in `mode-specific-map'
-         ("C-c M-x" . consult-mode-command)
-         ("C-c h" . consult-history)
-         ("C-c k" . consult-kmacro)
-         ("C-c m" . consult-man)
-         ("C-c i" . consult-info)
-         ([remap Info-search] . consult-info)
-         ;; C-x bindings in `ctl-x-map'
-         ("C-x M-:" . consult-complex-command)     ;; orig. repeat-complex-command
-         ("C-x b" . consult-buffer)                ;; orig. switch-to-buffer
-         ("C-x 4 b" . consult-buffer-other-window) ;; orig. switch-to-buffer-other-window
-         ("C-x 5 b" . consult-buffer-other-frame)  ;; orig. switch-to-buffer-other-frame
-         ("C-x t b" . consult-buffer-other-tab)    ;; orig. switch-to-buffer-other-tab
-         ("C-x r b" . consult-bookmark)            ;; orig. bookmark-jump
-         ("C-x p b" . consult-project-buffer)      ;; orig. project-switch-to-buffer
-         ;; Custom M-# bindings for fast register access
-         ("M-#" . consult-register-load)
-         ("M-'" . consult-register-store)          ;; orig. abbrev-prefix-mark (unrelated)
-         ("C-M-#" . consult-register)
-         ;; Other custom bindings
-         ("M-y" . consult-yank-pop)                ;; orig. yank-pop
-         ;; M-g bindings in `goto-map'
-         ("M-g e" . consult-compile-error)
-         ("M-g f" . consult-flymake)               ;; Alternative: consult-flycheck
-         ("M-g g" . consult-goto-line)             ;; orig. goto-line
-         ("M-g M-g" . consult-goto-line)           ;; orig. goto-line
-         ("M-g o" . consult-outline)               ;; Alternative: consult-org-heading
-         ("M-g m" . consult-mark)
-         ("M-g k" . consult-global-mark)
-         ("M-g i" . consult-imenu)
-         ("M-g I" . consult-imenu-multi)
-         ;; M-s bindings in `search-map'
-         ("M-s d" . consult-fd)                  ;; Alternative: consult-fd
-         ("M-s r" . consult-ripgrep)
-         ("M-s l" . consult-line)
-         ("M-s L" . consult-line-multi)
-         ("M-s k" . consult-keep-lines)
-         ("M-s u" . consult-focus-lines)
-         ;; Isearch integration
-         ("M-s e" . consult-isearch-history)
-         :map isearch-mode-map
-         ("M-e" . consult-isearch-history)         ;; orig. isearch-edit-string
-         ("M-s e" . consult-isearch-history)       ;; orig. isearch-edit-string
-         ("M-s l" . consult-line)                  ;; needed by consult-line to detect isearch
-         ("M-s L" . consult-line-multi)            ;; needed by consult-line to detect isearch
-         ;; Minibuffer history
-         :map minibuffer-local-map
-         ("M-s" . consult-history)                 ;; orig. next-matching-history-element
-         ("M-r" . consult-history))                ;; orig. previous-matching-history-element
-
-  ;; Enable automatic preview at point in the *Completions* buffer. This is
-  ;; relevant when you use the default completion UI.
-  :hook (completion-list-mode . consult-preview-at-point-mode)
-
-  ;; The :init configuration is always executed (Not lazy)
-  :init
-
-  ;; Optionally configure the register formatting. This improves the register
-  ;; preview for `consult-register', `consult-register-load',
-  ;; `consult-register-store' and the Emacs built-ins.
-  (setq register-preview-delay 0.5
-        register-preview-function #'consult-register-format)
-
-  ;; Optionally tweak the register preview window.
-  ;; This adds thin lines, sorting and hides the mode line of the window.
-  (advice-add #'register-preview :override #'consult-register-window)
-
-  ;; Use Consult to select xref locations with preview
-  (setq xref-show-xrefs-function #'consult-xref
-        xref-show-definitions-function #'consult-xref)
-
-  ;; Configure other variables and modes in the :config section,
-  ;; after lazily loading the package.
-  :config
-  (setq consult-buffer-filter
-        (rx bos
-            (? ?*)
-            (or
-             "Messages"
-             (seq (or ?O ?o) "utput")
-             "Compile-Log"
-             "Completions"
-             "Flymake log"
-             "Warnings"
-             "Flymake diagnostics"
-             "Async Shell Command"
-             "Async-native-compile-log"
-             "Native-compile-Log"
-             "Apropos"
-             "Backtrace"
-             "prodigy"
-             "Calendar"
-             "Finder"
-             "Kill Ring"
-             "eshell"
-             "epc con"
-             "shell"
-             "terminal"
-             "vterm"
-             "quickrun"
-             "elfeed-entry"
-             "macro expansion"
-             "Agenda Commands"
-             "Org Select"
-             "Capture"
-             "CAPTURE-"
-             "prolog"
-             "rustfmt"
-             "Disabled Command"
-             "magit-process: "
-             "magit-diff: "
-             )
-            (* anything)
-            (? ?*)
-            eos))
-
-  ;; Optionally configure preview. The default value
-  ;; is 'any, such that any key triggers the preview.
-  ;; (setq consult-preview-key 'any)
-  ;; (setq consult-preview-key "M-.")
-  ;; (setq consult-preview-key '("S-<down>" "S-<up>"))
-  ;; For some commands and buffer sources it is useful to configure the
-  ;; :preview-key on a per-command basis using the `consult-customize' macro.
-  (consult-customize
-   consult-theme :preview-key '(:debounce 0.2 any)
-   consult-bookmark consult-buffer :preview-key "M-."
-   consult-ripgrep consult-git-grep consult-grep
-   consult-recent-file consult-xref
-   consult--source-bookmark consult--source-file-register
-   consult--source-recent-file consult--source-project-recent-file
-   ;; :preview-key "M-."
-   :preview-key '(:debounce 0.4 any))
-
-  ;; Optionally configure the narrowing key.
-  ;; Both < and C-+ work reasonably well.
-  (setq consult-narrow-key "<") ;; "C-+"
-
-  ;; Optionally make narrowing help available in the minibuffer.
-  (define-key consult-narrow-map (vconcat consult-narrow-key "?") #'consult-narrow-help)
-  )
-
 (use-package rg
   :bind
-  ("M-s D" . rg-menu))
+  ("M-s r" . rg-menu))
 
 (use-package orderless
   :custom
   (completion-styles '(orderless basic))
   (completion-category-defaults nil)
   (completion-category-overrides '((file (styles basic partial-completion)))))
+
+(use-package tabspaces
+  :hook (after-init . tabspaces-setup)
+  :custom
+  (tab-bar-show nil)
+  (tabspaces-keymap-prefix "C-c SPC")
+  (tabspaces-use-filtered-buffers-as-default t)
+  (tabspaces-default-tab "Default")
+  (tabspaces-remove-to-default t)
+  (tabspaces-include-buffers '("*scratch*" "*Messages*"))
+  (tabspaces-initialize-project-with-todo t)
+  ;; sessions
+  (tabspaces-session t)
+  (tabspaces-session-auto-restore t)
+  :config
+  (define-keymap
+    :keymap tabspaces-command-map
+    "K" #'tabspaces-clear-buffers
+    "k" #'tabspaces-remove-selected-buffer
+    "d" #'tabspaces-remove-current-buffer
+    "q" #'tabspaces-close-workspace
+    "Q" #'tabspaces-kill-buffers-close-workspace)
+  (defun tabspaces-setup ()
+    "Set up tabspace at startup."
+    (tabspaces-mode)
+    (tab-bar-rename-tab "Home")
+    (dolist (name '("*Messages*" "*scratch*"))
+      (when-let ((buf (get-buffer name)))
+        (set-frame-parameter nil
+                             'buffer-list
+                             (cons buf (frame-parameter nil 'buffer-list)))))))
 
 ;;;; Edit
 (use-package edit)
@@ -442,10 +332,10 @@ if that doesn't produce a completion match."
       "f" #'avy-goto-word-crt-line)))
 
 (use-package aggressive-indent
-  :hook (after-init-hook . global-aggressive-indent-mode))
+  :hook (after-init . global-aggressive-indent-mode))
 
 (use-package hl-todo
-  :hook (after-init-hook . global-hl-todo-mode))
+  :hook (after-init . global-hl-todo-mode))
 
 ;;;; Help
 (use-package help
@@ -457,15 +347,44 @@ if that doesn't produce a completion match."
   :config
   (temp-buffer-resize-mode))
 
-(progn ;    `isearch'
-  (setq isearch-allow-scroll t))
+;;;; `isearch'
+(use-package isearch-mb
+  :hook (after-init . isearch-mb-mode)
+  :custom
+  (isearch-lazy-count t)
+  (search-ring-max 200)
+  (regexp-search-ring-max 200)
+  (isearch-allow-scroll t)
+  (isearch-regexp-lax-whitespace t)
+  (search-whitespace-regexp "\\W+")
+  :bind
+  (("C-s" . isearch-forward-regexp)
+   ("C-r" . isearch-backward-regexp))
+  :config
+  (add-to-list 'isearch-mb--with-buffer #'isearch-yank-word)
+  (define-key isearch-mb-minibuffer-map (kbd "M-w") #'isearch-yank-word)
+
+  (add-to-list 'isearch-mb--after-exit #'avy-isearch)
+  (define-key isearch-mb-minibuffer-map (kbd "C-'") #'avy-isearch)
+
+  (advice-add 'isearch-lazy-count-format :filter-return
+              (lambda (s) "Fontification of the lazy count."
+                (propertize s 'face (cond
+                                     ((not isearch-success) 'error)
+                                     (isearch-wrapped 'warning)
+                                     (t 'success)))))
+  (advice-add 'isearch-cancel :before
+              (lambda () "Add search string to history also when canceling."
+                (unless (string-equal "" isearch-string)
+                  (isearch-update-ring isearch-string isearch-regexp))))
+  )
+
 
 (use-package man
   :defer t
   :config (setq Man-width 80))
 
 ;;;; Program
-;;;;; `treesit'
 (use-package treesit-auto
   :init
   (defvar treesit:load-path (no-littering-expand-var-file-name "tree-sitter")
@@ -483,24 +402,21 @@ if that doesn't produce a completion match."
     (apply fn arg))
   (advice-add #'treesit--install-language-grammar-1 :around #'treesit:patch--path))
 
-;;;;; `prog-mode'
 (use-package prog-mode
   :defer
   :config
-  (add-hook 'prog-mode-hook #'global-prettify-symbols-mode)
+  ;;(add-hook 'prog-mode-hook #'global-prettify-symbols-mode)
   (add-hook 'prog-mode-hook #'flymake-mode)
   ;;(add-hook 'prog-mode-hook #'eldoc-mode)
   (defun prog:indent-spaces-mode ()
     (setq indent-tabs-mode nil)))
 
-;;;;; `elisp-mode'
 (use-package elisp-mode
   :defer
   :config
   (add-hook 'emacs-lisp-mode-hook #'reveal-mode)
   (add-hook 'lisp-interaction-mode-hook #'prog:indent-spaces-mode))
 
-;;;;; `rust-mode'
 (use-package rust-ts-mode
   :mode "\\.rs\\'")
 
@@ -511,7 +427,6 @@ if that doesn't produce a completion match."
   :config
   (define-key cargo-mode-map (kbd "C-c") 'cargo-minor-mode-command-map))
 
-;;;;; `julia-mode'
 (use-package julia-ts-mode :defer)
 
 (use-package eglot-jl
@@ -526,36 +441,32 @@ if that doesn't produce a completion match."
 (use-package julia-formatter
   :hook (julia-ts-mode . julia-formatter-mode))
 
-;;;;; `typescript-ts-mode'
 (use-package typescript-ts-mode
   :mode "\\.ts\\'")
 
-;;;;; `javascript-ts-mode'
 (use-package js-ts-mode
   :mode "\\.js\\'")
 
-;;;;; `scad-mode' to edit OpenSCAD files
-(use-package scad-mode :defer)
+(use-package scad-mode :defer) ;;`scad-mode' to edit OpenSCAD files
 
-;;;;; `shell'
 (use-package ebuild-mode ;; Gentoo build script
   :defer)
 
-;;;;; `yaml-ts-mode'
 (use-package yaml-ts-mode
   :mode "\\.ya?ml\\'")
 
-;;;;; `yasnippet'
 (use-package yasnippet
-  :hook (after-init-hook . yas-global-mode))
+  :hook (after-init . yas-global-mode))
 
-;;;;; `eglot'
 (use-package eglot
   :hook
-  ((rust-ts-mode-hook . eglot-ensure)
-   (typescript-ts-mode-hook . eglot-ensure)
-   (js-ts-mode-hook . eglot-ensure)
-   (scad-mode-hook . eglot-ensure))
+  ((rust-mode . eglot-ensure)
+   (rust-ts-mode . eglot-ensure)
+   (julia-mode . eglot-ensure)
+   (julia-ts-mode . eglot-ensure)
+   (typescript-ts-mode . eglot-ensure)
+   (js-ts-mode . eglot-ensure)
+   (scad-mode . eglot-ensure))
   :config
   (progn ;; `deno-lsp'
     (add-to-list 'eglot-server-programs
@@ -569,27 +480,161 @@ if that doesn't produce a completion match."
       (list :deno.enable t
             :deno.lint t
             :deno.suggest.completeFunctionCalls t)))
-  
+
   (progn ;; `openscad-lsp'
     (add-to-list 'eglot-server-programs
                  '((scad-mode) . (eglot-openscad "openscad-lsp")))
-    
+
     (defclass eglot-openscad (eglot-lsp-server) ()
       :documentation "A custom class for openscad lsp.")
-    
+
     (cl-defmethod eglot-initialization-options ((server eglot-openscad))
       "Passes through required openscad-lsp initialization options."
       (list :search_paths ""
             :fmt_style "file"
             :default_param t))))
 
-;;;;; `eldoc'
 (use-package eldoc-box
   :custom
   (eldoc-box-offset '(20 20 16))
   (eldoc-box-only-multi-line t)
   :config
   (add-hook 'eglot-managed-mode-hook #'eldoc-box-hover-mode t))
+
+;;;; `Text'
+(use-package text-mode
+  :init
+  (setq-default major-mode 'text-mode))
+
+(use-package git-modes :defer)
+
+(use-package csv-mode
+  :if win-wsl-p
+  :mode "\\.ptd\\'"
+  :config
+  (add-hook 'csv-mode-hook
+            (lambda ()
+              (when (string-match-p "\\.ptd\\'" (buffer-file-name))
+                (csv-set-comment-start "!")
+                (csv-set-separator (string-to-char " "))))))
+
+(use-package conf-mode
+  :if win-wsl-p
+  :mode ("\\.pro\\'" . conf-space-mode))
+
+(use-package markdown-mode
+  :mode ("README\\.md\\'" . gfm-mode))
+
+(use-package latex
+  :mode ("\\.tex\\'" . latex-mode)
+  :hook
+  ((LaTeX-mode-hook . LaTeX-math-mode)
+   (LaTeX-mode-hook . turn-on-reftex)
+   (LaTeX-mode-hook . TeX-PDF-mode))
+  :custom
+  ;; use hidden dirs for auctex files
+  (TeX-check-TeX nil)
+  ;; Show output of Tex compilation in other window.
+  ;; (TeX-show-compilation t)
+  ;; Automatically save style information when saving the buffer.
+  (TeX-auto-save t)
+  ;; Parse file after loading it if no style hook is found for it.
+  (TeX-parse-self t)
+  ;; Automatically untabify when saving the buffer.
+  (TeX-auto-untabify t)
+  ;; If non-nil, ask user for permission to save files before starting TeX.
+  (TeX-save-query nil)
+  (TeX-electric-math '("$" . "$"))
+  ;; view by externally program.
+  (TeX-view-program-selection '((output-pdf "wslview")))
+  ;; Control if server should be started for inverse search.
+  (TeX-source-correlate-start-server t)
+  ;; Style
+  (LaTeX-default-style "standalone")
+  (reftex-plug-into-AUCTeX t)
+  (TeX-clean-confirm nil)
+  :config
+  (setq-default TeX-master nil
+                TeX-engine 'xetex
+                TeX-output-dir "build")
+  ;; Revert the PDF-buffer after the TeX compilation has finished
+  (add-hook 'TeX-after-compilation-finished-functions #'TeX-revert-document-buffer)
+  (TeX-source-correlate-mode)
+
+  ;; Config latemk
+  (add-hook 'LaTeX-mode-hook #'latexmk-setup)
+  (defun latexmk-setup ()
+    (setq TeX-command-default "LaTexmk"
+          TeX-command-extra-options (cond
+                                     ((eq TeX-engine 'xetex)"-shell-escape")
+                                     (t ""))
+          LaTeX-clean-intermediate-suffixes
+          (append LaTeX-clean-intermediate-suffixes '("\\.fdb_latexmk" "\\.aux.bak" "\\.fls")))
+    (add-to-list 'TeX-expand-list
+                 '("%(-PDF)"
+                   (lambda ()
+                     (cond
+                      ((and (eq TeX-engine 'default)
+                            TeX-PDF-mode)
+                       "-pdf")
+                      ((eq TeX-engine 'xetex) "-xelatex ")
+                      (t "")))))
+    (add-to-list 'TeX-command-list
+                 '("LaTexmk"
+                   "latexmk %(-PDF) %(mode) %(file-line-error) %(extraopts) %(output-dir) %S%(PDFout) %t"
+                   TeX-run-format
+                   nil
+                   (latex-mode doctex-mode)
+                   :help "Run Latexmk")))
+
+  ;; See: https://github.com/tom-tan/auctex-latexmk/issues/28
+  ;;   &  https://stackoverflow.com/questions/3124273/compile-xelatex-tex-file-with-latexmk
+  (advice-add #'TeX-output-extension :before #'latexmk--TeX-output-extension)
+  (defun latexmk--TeX-output-extension ()
+    (when (and TeX-PDF-mode
+               (eq TeX-engine 'xetex)
+               (string-match-p "latexmk" TeX-command-default))
+      (unless (listp TeX-output-extension)
+        (setq TeX-output-extension (list TeX-output-extension)))))
+  )
+
+(use-package cdlatex
+  :hook ((LaTeX-mode-hook . turn-on-cdlatex)
+         (latex-mode-hook . turn-on-cdlatex))
+  :custom
+  (cdlatex-math-modify-alist '((?B "\\mathbb" nil t nil nil)))
+  (cdlatex-math-symbol-alist '((?c ("\\(?\\)" )))))
+
+(use-package org
+  :bind
+  ("C-c a" . org-agenda)
+  :custom
+  (org-startup-truncated t)
+  (org-preview-latex-default-process 'dvisvgm)
+  :config
+  (require 'org-tempo)
+  (setq org-M-RET-may-split-line '((default . nil)))
+  (setq org-refile-use-outline-path 'file
+        org-outline-path-complete-in-steps nil)
+  (setq org-refile-targets `((nil :level . 1)
+                             ("emacs.org" :level . 1)
+                             ("work.org" :level . 1)
+                             ("toys.org" :level . 1)
+                             ("projects.org" :level . 1))
+        ;; `entry' 放置在子节点首位
+        org-reverse-note-order t)
+  (when (fboundp 'turn-on-org-cdlatex)
+    (add-hook 'org-mode-hook #'turn-on-org-cdlatex))
+  (add-hook 'org-mode-hook (lambda ()
+                             (electric-pair-local-mode -1))))
+
+(use-package org-capture
+  :bind
+  ("C-c c" . org-capture))
+
+(use-package org-modern
+  :hook ((org-mode . org-modern-mode)
+         (org-agenda-finalize . org-modern-agenda)))
 
 ;;;; `other'
 (use-package recentf
@@ -603,16 +648,17 @@ if that doesn't produce a completion match."
 (use-package rime
   :bind (
          :map rime-active-mode-map
-              ("TAB" . rime-inline-ascii)
+         ("TAB" . rime-inline-ascii)
          :map rime-mode-map
-              ("M-j" . rime-force-enable))
+         ("M-j" . rime-force-enable))
   :init
   (setq rime-user-data-dir (no-littering-expand-etc-file-name "rime/"))
+
   :custom
   (default-input-method "rime")
   (rime-inline-ascii-holder ?a)
   (rime-cursor "|")
-  ;; 与`rime-cursor'互斥 
+  ;; 与`rime-cursor'互斥
   (rime-show-preedit 'inline)
   ;; (rime-title "✍️")
   (rime-inline-ascii-trigger 'shift-r)
@@ -620,13 +666,20 @@ if that doesn't produce a completion match."
   (rime-posframe-properties (list :background-color "#333333"
                                   :foreground-color "#dcdccc"
                                   :internal-border-width 10))
-  (rime-disable-predicates '(rime-predicate-prog-in-code-p))
-  (rime-inline-predicates '(rime-predicate-space-after-cc-p
-                            rime-predicate-after-ascii-char-p
-                            rime-predicate-tex-math-or-command-p))
+  (rime-disable-predicates '(rime-predicate-after-ascii-char-p
+                             rime-predicate-prog-in-code-p
+                             +rime-predicate-org-latex-mode-p
+                             rime-predicate-org-in-src-block-p
+                             rime-predicate-tex-math-or-command-p
+                             rime-predicate-space-after-cc-p))
+  (rime-inline-predicates '(rime-predicate-punctuation-line-begin-p))
   :config
-  (setq rime-translate-keybindings '("C-f" "C-b" "C-n" "C-p" "C-g" "C-v" "M-v" "," "." "S-<return>")))
-
+  (setq rime-translate-keybindings '("C-f" "C-b" "C-n" "C-p" "C-g" "C-v" "M-v" "," "." "S-<return>"))
+  (defun +rime-predicate-org-latex-mode-p ()
+    "If cursor is inside an org-mode's LaTeX fragment, macro or its arguments."
+    (and (derived-mode-p  'org-mode)
+         (or (and (fboundp 'texmathp) (texmathp))
+             (org-inside-latex-macro-p)))))
 
 (use-package vterm
   :bind (:map vterm-mode-map
@@ -634,16 +687,16 @@ if that doesn't produce a completion match."
               ("<C-backspace>" . (lambda () (interactive) (vterm-send-key (kbd "C-w")))))
   :config
   (add-to-list 'display-buffer-alist
-             '((lambda (buffer-or-name _)
+               '((lambda (buffer-or-name _)
                    (let ((buffer (get-buffer buffer-or-name)))
                      (with-current-buffer buffer
                        (or (equal major-mode 'vterm-mode)
                            (string-prefix-p vterm-buffer-name (buffer-name buffer))))))
-               (display-buffer-reuse-window display-buffer-in-side-window)
-               (side . bottom)
-               ;;(dedicated . t) ;dedicated is supported in emacs27
-               (reusable-frames . visible)
-               (window-height . 0.3))))
+                 (display-buffer-reuse-window display-buffer-in-side-window)
+                 (side . bottom)
+                 ;;(dedicated . t) ;dedicated is supported in emacs27
+                 (reusable-frames . visible)
+                 (window-height . 0.3))))
 
 (use-package magit
   :defer t
